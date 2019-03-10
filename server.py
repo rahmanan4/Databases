@@ -25,7 +25,7 @@ class Server:
     address_list = []
     port_list = []
     config_flag = 0
-    #locks = {}
+    #locks = []
     #my_lock_thresh = 100
 
     def __init__(self, my_port, isConnect, args=None):
@@ -72,62 +72,6 @@ class Server:
             if self.mem_info[key] > max_thresh:
                 max_thresh = self.mem_info[key]
         return max_thresh
-
-    def initiate_lock_mech(self, network_max):
-        self.my_lock_thresh = network_max + 100
-        self.locks[(self.my_address, self.my_port)] = self.my_lock_thresh
-        for key in range(network_max, self.my_mem_thresh):
-            self.locks[key] = 'u'
-
-    def lock(self, key):
-        if key <= self.my_mem_thresh and key > self.my_mem_thresh - 100:
-            self.locks[key] = 'l'
-            return 'Locked'
-        else:
-            # the key is not in this node. Look for appropriate node and send it there
-            for addr in self.mem_info:
-                # print(address)
-                if self.mem_info[addr] > key and key > self.mem_info[addr] - 100:
-                    # found the node where key is located
-                    for connection in self.connections:
-                        # look for the socket to that node
-                        #print(connection.getpeername(), connection.getsockname(), addr)
-                        if connection.getpeername() == addr:
-                            # send the op
-                            connection.send(str.encode('l, ' + str(key)))
-                            # return None when operation is sent to other node.
-                            return None
-                        if connection.getsockname() == addr:
-                            # send the op
-                            connection.send(str.encode('l, ' + str(key)))
-                            # return None when operation is sent to other node
-                            return None
-            return False
-
-    def unlock(self, key):
-        if key <= self.my_mem_thresh and key > self.my_mem_thresh - 100:
-            self.locks[key] = 'u'
-            return 'Unlocked'
-        else:
-            # the key is not in this node. Look for appropriate node and send it there
-            for addr in self.mem_info:
-                # print(address)
-                if self.mem_info[addr] > key and key > self.mem_info[addr] - 100:
-                    # found the node where key is located
-                    for connection in self.connections:
-                        # look for the socket to that node
-                        # print(connection.getpeername(), connection.getsockname(), addr)
-                        if connection.getpeername() == addr:
-                            # send the op
-                            connection.send(str.encode('u, ' + str(key)))
-                            # return None when operation is sent to other node.
-                            return None
-                        if connection.getsockname() == addr:
-                            # send the op
-                            connection.send(str.encode('u, ' + str(key)))
-                            # return None when operation is sent to other node
-                            return None
-            return False
 
     # write value at key of this server
     def write(self, key, value):
@@ -225,10 +169,18 @@ class Server:
                 not_done = False
         return
 
-    def readtest(self, sender_mem):
+    def initiate_locks(self, num_reads):
+        key_lock_list = []
+        for i in range(num_reads):
+            key_lock = threading.Lock()
+            key_lock_list.append(key_lock)
+        return key_lock_list
+
+    def readtestserial(self, sender_mem):
         read_key_list = []
-        for i in range(1000):
-            value = 10
+        num_reads = 1000
+        for i in range(num_reads):
+            value = randint(0, 300)
             read_key_list.append(value)
         start = time.time()
         lock_test = threading.Lock()
@@ -241,10 +193,29 @@ class Server:
         time.sleep(0.5)
         return time_took
 
+    def readtestconcurrent(self, sender_mem):
+        read_key_list = []
+        num_reads = 1000
+        for i in range(num_reads):
+            value = randint(0, 300)
+            read_key_list.append(value)
+        locks = self.initiate_locks(num_reads)
+        start = time.time()
+        for key in read_key_list:
+            lock = locks[key]
+            readtestThread = threading.Thread(target=self.read_locker, args=(int(key), sender_mem, lock))
+            readtestThread.daemon = True
+            readtestThread.start()
+        end = time.time()
+        time_took = end - start
+        time.sleep(0.5)
+        return time_took
+
     def readtestnolock(self, sender_mem):
         read_key_list = []
-        for i in range(1000):
-            value = 10
+        num_reads = 1000
+        for i in range(num_reads):
+            value = randint(0, 300)
             read_key_list.append(value)
         start = time.time()
         for key in read_key_list:
@@ -256,30 +227,51 @@ class Server:
         time.sleep(0.5)
         return time_took
 
-    def writetest(self):
+    def writetestserial(self):
         write_key_list = []
-        for i in range(1000):
+        num_writes = 1000
+        for i in range(num_writes):
             val = randint(0, 300)
             write_key_list.append(val)
         start = time.time()
         lock_test = threading.Lock()
         for key in write_key_list:
-                value = randint(0, 100)
-                writetestThread = threading.Thread(target=self.write_locker, args=(int(key), value, lock_test))
-                writetestThread.daemon = True
-                writetestThread.start()
+            value = randint(0, 100)
+            writetestThread = threading.Thread(target=self.write_locker, args=(int(key), value, lock_test))
+            writetestThread.daemon = True
+            writetestThread.start()
+        end = time.time()
+        time_took = end - start
+        time.sleep(0.5)
+        return time_took
+
+    def writetestconcurrent(self):
+        write_key_list = []
+        num_writes = 1000
+        for i in range(num_writes):
+            value = randint(0, 300)
+            write_key_list.append(value)
+        locks = self.initiate_locks(num_writes)
+        start = time.time()
+        for key in write_key_list:
+            lock = locks[key]
+            value = randint(0, 100)
+            writetestThread = threading.Thread(target=self.write_locker, args=(int(key), value, lock))
+            writetestThread.daemon = True
+            writetestThread.start()
         end = time.time()
         time_took = end - start
         time.sleep(0.5)
         return time_took
 
     def writetestnolock(self):
-        read_key_list = []
-        for i in range(1000):
+        write_key_list = []
+        num_writes = 1000
+        for i in range(num_writes):
             value = randint(0, 300)
-            read_key_list.append(value)
+            write_key_list.append(value)
         start = time.time()
-        for key in read_key_list:
+        for key in write_key_list:
             writetestThread = threading.Thread(target=self.write, args=(int(key), value))
             writetestThread.daemon = True
             writetestThread.start()
@@ -291,7 +283,8 @@ class Server:
     def writeforread(self):
         lock_test = threading.Lock()
         write_key_list = []
-        for i in range(1000):
+        num_writes = 1000
+        for i in range(num_writes):
             write_key_list.append(i)
         start = time.time()
         for key in write_key_list:
@@ -316,6 +309,7 @@ class Server:
         # dec_data is an array of strings which was tokenized using ','
         # strip white-space
         op = dec_data[0].strip()
+
         # check operation and format: <w,key,value> or <r, key> or rt = readtest, wt = writetest, wfr = write
         # values for readtest
         if op == 'w' and len(dec_data) == 3:
@@ -326,18 +320,30 @@ class Server:
                 if self.mem_info[(self.my_address, self.my_port)] != int(dec_data[2].strip()):
                     sender_mem = int(dec_data[2].strip())
             ret_val = self.read(int(dec_data[1].strip()), sender_mem)
-        # test cases for read and write with and without locks
-        elif op == 'rt':
+
+        # read test with only one lock, serial execution of threads
+        elif op == 'rts':
             sender_mem = self.mem_info[(self.my_address, self.my_port)]
-            ret_val = self.readtest(sender_mem)
+            ret_val = self.readtestserial(sender_mem)
+        # read test with lock per key, concurrent execution of threads
+        elif op == 'rtc':
+            sender_mem = self.mem_info[(self.my_address, self.my_port)]
+            ret_val = self.readtestconcurrent(sender_mem)
+        # read test with no locks implemented at all
         elif op == 'rnl':
             sender_mem = self.mem_info[(self.my_address, self.my_port)]
             ret_val = self.readtestnolock(sender_mem)
 
-        elif op == 'wt':
-            ret_val = self.writetest()
+        # write test with only one lock, serial execution of threads
+        elif op == 'wts':
+            ret_val = self.writetestserial()
+        # write test with lock per key, concurrent execution of threads
+        elif op == 'wtc':
+            ret_val = self.writetestconcurrent()
+        # write test with no locks implemented at all
         elif op == 'wnl':
             ret_val = self.writetestnolock()
+        # write test that fills in all dict values 0-299, used before readtests
         elif op == 'wfr':
             ret_val = self.writeforread()
 
