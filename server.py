@@ -6,9 +6,11 @@ from random import randint
 
 
 class Server:
+    # local address
     my_address = "127.0.0.1"
     # communicate with server on port --
     my_port = ""
+    # number of data items in a particular domain
     my_mem_thresh = 100
     # store of memory addresses
     mem_info = {}
@@ -25,8 +27,6 @@ class Server:
     address_list = []
     port_list = []
     config_flag = 0
-    #locks = []
-    #my_lock_thresh = 100
 
     def __init__(self, my_port, isConnect, args=None):
         try:
@@ -56,19 +56,12 @@ class Server:
                 return conn
 
     def set_my_mem_thresh(self, network_max):
-        '''
-        for key in self.mem_info:
-            #print(address)
-            if self.mem_info[key] > self.my_mem_thresh:
-                    self.my_mem_thresh = self.mem_info[key]
-        '''
         self.my_mem_thresh = network_max + 100
         self.mem_info[(self.my_address, self.my_port)] = self.my_mem_thresh
 
     def get_mem_info_max(self):
         max_thresh = 0
         for key in self.mem_info:
-            # print(address)
             if self.mem_info[key] > max_thresh:
                 max_thresh = self.mem_info[key]
         return max_thresh
@@ -82,12 +75,10 @@ class Server:
             else:
             # the key is not in this node. Look for appropriate node and send it there
                 for addr in self.mem_info:
-                # print(address)
                     if self.mem_info[addr] > key and key > self.mem_info[addr] - 100:
                     # found the node where key is located
                         for connection in self.connections:
                         # look for the socket to that node
-                        #print(connection.getpeername(), connection.getsockname(), addr)
                             if connection.getpeername() == addr:
                             # send the op
                                 connection.send(str.encode('w, ' + str(key) + ', ' + str(value)))
@@ -112,6 +103,7 @@ class Server:
                         if connection.getpeername() == addr:
                             connection.send(str.encode(value))
                             return True
+            return value
 
         else:
             # the key is not in this node. Look for appropriate node and send it there
@@ -120,8 +112,6 @@ class Server:
                     # found the node where key is located
                     for connection in self.connections:
                         # look for the socket to that node
-                        #print(connection)
-                        #print(connection.getpeername(), connection.getsockname(), addr)
                         if connection.getpeername() == addr:
                             # send the op
                             connection.send(str.encode('r, ' + str(key) + ', ' + str(sender_mem)))
@@ -133,7 +123,6 @@ class Server:
                             # return None when operation is sent to other node
                             return None
             return False
-        #return value
 
     # check if key is valid -
     # if some data exists at key return True
@@ -147,6 +136,7 @@ class Server:
             return False
         return True
 
+    # locking mechanism component that acquires and releases locks before performing operations
     def read_locker(self, key, sender_mem, lock):
         not_done = True
         while not_done:
@@ -157,7 +147,6 @@ class Server:
                 lock.release()
                 not_done = False
         return
-
     def write_locker(self, key, value, lock):
         not_done = True
         while not_done:
@@ -169,6 +158,7 @@ class Server:
                 not_done = False
         return
 
+    # initiate number of locks that corresponds to the number of operations that will be performed
     def initiate_locks(self, num_reads):
         key_lock_list = []
         for i in range(num_reads):
@@ -176,11 +166,106 @@ class Server:
             key_lock_list.append(key_lock)
         return key_lock_list
 
+    # throughput tests for no locks, serial execution, and concurrent execution
+    def rtsthroughput(self, sender_mem, seconds):
+        ops = 0
+        elapsed = 0
+        lock_test = threading.Lock()
+        start = time.time()
+        time.clock()
+        while elapsed < seconds:
+            key = randint(0, 399)
+            elapsed = time.time() - start
+            readtestThread = threading.Thread(target=self.read_locker, args=(key, sender_mem, lock_test))
+            readtestThread.daemon = True
+            readtestThread.start()
+            ops += 1
+        return ops
+
+    def rtcthroughput(self, sender_mem, seconds):
+        ops = 0
+        elapsed = 0
+        locks = self.initiate_locks(1000)
+        start = time.time()
+        time.clock()
+        while elapsed < seconds:
+            key = randint(0, 399)
+            lock = locks[key]
+            elapsed = time.time() - start
+            readtestThread = threading.Thread(target=self.read_locker, args=(key, sender_mem, lock))
+            readtestThread.daemon = True
+            readtestThread.start()
+            ops += 1
+        return ops
+
+    def rnlthroughput(self, sender_mem, seconds):
+        ops = 0
+        elapsed = 0
+        start = time.time()
+        time.clock()
+        while elapsed < seconds:
+            key = randint(0, 399)
+            elapsed = time.time() - start
+            readtestThread = threading.Thread(target=self.read, args=(key, sender_mem))
+            readtestThread.daemon = True
+            readtestThread.start()
+            ops += 1
+        return ops
+
+    def wtsthroughput(self, seconds):
+        ops = 0
+        elapsed = 0
+        val = 10
+        lock_test = threading.Lock()
+        start = time.time()
+        time.clock()
+        while elapsed < seconds:
+            key = randint(0, 399)
+            elapsed = time.time() - start
+            readtestThread = threading.Thread(target=self.write_locker, args=(key, val, lock_test))
+            readtestThread.daemon = True
+            readtestThread.start()
+            ops += 1
+        return ops
+
+    def wtcthroughput(self, seconds):
+        ops = 0
+        elapsed = 0
+        val = 10
+        locks = self.initiate_locks(1000)
+        start = time.time()
+        time.clock()
+        while elapsed < seconds:
+            key = randint(0, 399)
+            lock = locks[key]
+            elapsed = time.time() - start
+            readtestThread = threading.Thread(target=self.write_locker, args=(key, val, lock))
+            readtestThread.daemon = True
+            readtestThread.start()
+            ops += 1
+        return ops
+
+    def wnlthroughput(self, seconds):
+        ops = 0
+        elapsed = 0
+        val = 10
+        start = time.time()
+        time.clock()
+        while elapsed < seconds:
+            key = randint(0, 399)
+            elapsed = time.time() - start
+            readtestThread = threading.Thread(target=self.write, args=(key, val))
+            readtestThread.daemon = True
+            readtestThread.start()
+            ops += 1
+        return ops
+
+    # latency tests for no locks, serial execution, and concurrent execution
     def readtestserial(self, sender_mem):
         read_key_list = []
-        num_reads = 1000
+        num_reads = 10000
         for i in range(num_reads):
-            value = randint(0, 300)
+            value = randint(0, 399)
             read_key_list.append(value)
         start = time.time()
         lock_test = threading.Lock()
@@ -195,9 +280,9 @@ class Server:
 
     def readtestconcurrent(self, sender_mem):
         read_key_list = []
-        num_reads = 1000
+        num_reads = 10000
         for i in range(num_reads):
-            value = randint(0, 300)
+            value = randint(0, 399)
             read_key_list.append(value)
         locks = self.initiate_locks(num_reads)
         start = time.time()
@@ -213,9 +298,9 @@ class Server:
 
     def readtestnolock(self, sender_mem):
         read_key_list = []
-        num_reads = 1000
+        num_reads = 10000
         for i in range(num_reads):
-            value = randint(0, 300)
+            value = randint(0, 399)
             read_key_list.append(value)
         start = time.time()
         for key in read_key_list:
@@ -229,9 +314,9 @@ class Server:
 
     def writetestserial(self):
         write_key_list = []
-        num_writes = 1000
+        num_writes = 10000
         for i in range(num_writes):
-            val = randint(0, 300)
+            val = randint(0, 399)
             write_key_list.append(val)
         start = time.time()
         lock_test = threading.Lock()
@@ -247,9 +332,9 @@ class Server:
 
     def writetestconcurrent(self):
         write_key_list = []
-        num_writes = 1000
+        num_writes = 10000
         for i in range(num_writes):
-            value = randint(0, 300)
+            value = randint(0, 399)
             write_key_list.append(value)
         locks = self.initiate_locks(num_writes)
         start = time.time()
@@ -266,12 +351,13 @@ class Server:
 
     def writetestnolock(self):
         write_key_list = []
-        num_writes = 1000
+        num_writes = 10000
         for i in range(num_writes):
-            value = randint(0, 300)
+            value = randint(0, 399)
             write_key_list.append(value)
         start = time.time()
         for key in write_key_list:
+            value = randint(0, 100)
             writetestThread = threading.Thread(target=self.write, args=(int(key), value))
             writetestThread.daemon = True
             writetestThread.start()
@@ -283,7 +369,7 @@ class Server:
     def writeforread(self):
         lock_test = threading.Lock()
         write_key_list = []
-        num_writes = 1000
+        num_writes = 10000
         for i in range(num_writes):
             write_key_list.append(i)
         start = time.time()
@@ -321,6 +407,29 @@ class Server:
                     sender_mem = int(dec_data[2].strip())
             ret_val = self.read(int(dec_data[1].strip()), sender_mem)
 
+        # read throughput test with no locks
+        elif op == 'rnlthru':
+            sender_mem = self.mem_info[(self.my_address, self.my_port)]
+            ret_val = self.rnlthroughput(sender_mem, 1)
+        # read throughput test with serial execution
+        elif op == 'rtsthru':
+            sender_mem = self.mem_info[(self.my_address, self.my_port)]
+            ret_val = self.rtsthroughput(sender_mem, 1)
+        # read throughput test with concurrent execution
+        elif op == 'rtcthru':
+            sender_mem = self.mem_info[(self.my_address, self.my_port)]
+            ret_val = self.rtcthroughput(sender_mem, 1)
+
+        # write throughput test with no locks
+        elif op == 'wnlthru':
+            ret_val = self.wnlthroughput(1)
+        # write throughput test with serial execution
+        elif op == 'wtsthru':
+            ret_val = self.wtsthroughput(1)
+        # write throughput test with concurrent execution
+        elif op == 'wtcthru':
+            ret_val = self.wtcthroughput(1)
+
         # read test with only one lock, serial execution of threads
         elif op == 'rts':
             sender_mem = self.mem_info[(self.my_address, self.my_port)]
@@ -347,19 +456,10 @@ class Server:
         elif op == 'wfr':
             ret_val = self.writeforread()
 
-
-        #elif op == 'l' and len(dec_data) == 2:
-         #   ret_val = self.lock(int(dec_data[1].strip()))
-
-        #elif op == 'u' and len(dec_data) == 2:
-         #   ret_val = self.unlock(int(dec_data[1].strip()))
-
         else:
-                    # return this if unrecognizable operation
+            # return this if unrecognizable operation
             return False
-        #finally:
-            #if acquired:
-                #lock.release()
+
         return ret_val
 
     # send Msg to other nodes and print its own msg
@@ -373,12 +473,9 @@ class Server:
             ret_val = self.operations(dec_data)
             print("Self: ret_val", ret_val)
             msg = raw_msg.encode('utf-8')
-            # for connection in self.connections:
-            # print(connection)
-            # connection.send(msg)
 
-    # recieve Msg from other nodes
-    # check if Msg is an operation, if so perform it
+    # receive msg from other nodes
+    # check if msg is an operation, if so perform it
     # if not just display it
     # conn != None means its a server socket
     # sock != None means its a client socket
@@ -395,16 +492,12 @@ class Server:
             print("DEC_DATA", dec_data)
             if dec_data.find("Welcome") != -1:
                 dec_data = dec_data.split(':')
-                # print("DEC_DATA", dec_data)
                 self.mem_info[(dec_data[1], int(dec_data[2]))] = int(dec_data[3].strip())
-                # print("BEFORE", self.mem_info, self.my_mem_thresh)
 
                 # update my_mem_thresh only once
                 if self.config_flag == 0:
                     self.config_flag = 1
                     self.set_my_mem_thresh(int(dec_data[4].strip()))
-                    #self.initiate_lock_mech(int(dec_data[4].strip()))
-
 
                 print("AFTER:", self.mem_info, self.my_mem_thresh)
 
@@ -429,7 +522,7 @@ class Server:
                 # if no comma then it not an instruction
                 print(str(data, 'utf-8').strip())
             else:
-                # it has coma, so assume it is an instruction
+                # it has comma, so assume it is an instruction
                 dec_data = dec_data.split(',')
                 ret_val = self.operations(dec_data)
                 print(ret_val)
@@ -451,7 +544,6 @@ class Server:
                 rThread = threading.Thread(target=self.recvMsg, args=(None, None, newsock,))
                 rThread.daemon = True
                 rThread.start()
-            # self.csock.send(str.encode("L, " + str(self.my_port)))
 
         # thread to send data to every node in connections[]
         iThread = threading.Thread(target=self.sendMsg)
@@ -469,8 +561,6 @@ class Server:
             cThread.daemon = True
             cThread.start()
             self.connections.append(conn)
-            # print(self.connections)
-            # print(str(address[0]), ':', str(address[1]), 'connected!')
 
     # handler
     def handler(self, conn, address):
@@ -480,73 +570,9 @@ class Server:
         # conn.send(welcome.encode('utf-8'))
 
 
-'''
-        while True:
-        # data receiving from client
-            data = conn.recv(1024)
-            dec_data = data.decode('utf-8')
-            # print client msg on server
-            print(address, ':', dec_data, "\n")
-            dec_data = dec_data.split(',')
-            #strip white-space
-            op = dec_data[0].strip()
-            if op is 'w' or op is 'r':
-            #send decoded data from client to operation
-                ret_val = self.operations(dec_data)
-                print(ret_val)
-            # making server's reply to clients
-                reply = 'From Server: ' + str(ret_val)
-            # send reply to the node that sent request
-            conn.send(reply.encode('utf-8'))
-            #for connection in self.connections:
-                # sending reply to other connected clients but not itself
-                #if not connection == conn:
-                    #connection.send(str.encode(reply))
-                # sends operation status to the client that requested an operation
-                #if connection == conn:
-                    #connection.send(str.encode(reply))
-            # to close a connection # breaking out
-            if not data:
-                print(str(address[0]), ':', str(address[1]), " disconnected.")
-                # remove connection from the list of connections
-                self.connections.remove(conn)
-                # close the connection
-                conn.close()
-                break
-'''
-'''
-# Client
-class Client:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    def sendMsg(self):
-        while True:
-            self.sock.send(bytes(input(""), 'utf-8'))
-    def __init__(self, address):
-        self.sock.connect((address, 10000))
-        iThread = threading.Thread(target=self.sendMsg)
-        iThread.daemon = True
-        iThread.start()
-        while True:
-            data = self.sock.recv(1024)
-            if not data:
-                break
-            print(str(data, 'utf-8'))
-'''
-
 if len(sys.argv) == 2:
     server = Server(sys.argv[1], False)
     server.run()
 else:
     server = Server(sys.argv[1], True, sys.argv[2:])
     server.run()
-
-'''
-cd /Users/jimmysok/PycharmProjects/DB
-python server.py 10000
-
-cd /Users/jimmysok/PycharmProjects/DB
-python server.py 10005 127.0.0.1 10000
-
-cd /Users/jimmysok/PycharmProjects/DB
-python server.py 10010 127.0.0.1 10000 127.0.0.1 10005
-'''
