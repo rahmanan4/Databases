@@ -1,6 +1,5 @@
 import random
 import time
-import server
 from datetime import date
 
 
@@ -225,11 +224,6 @@ def NURand(A, x, y):
     return result
 
 
-def get_warehouse(warehouseTable):
-    for warehouse in warehouseTable:
-        W_TAX = warehouse['W_TAX']
-        return W_TAX
-
 def newOrderTransaction(W_ID, D_W_ID, D_ID, C_W_ID, C_D_ID, C_ID, O_ENTRY_D, I_IDS, I_W_IDS, I_QTYS,
                         warehouseTable, districtTable, customerTable, itemTable, newOrderTable, orderLineTable,
                         orderTable, stockTable):
@@ -241,24 +235,6 @@ def newOrderTransaction(W_ID, D_W_ID, D_ID, C_W_ID, C_D_ID, C_ID, O_ENTRY_D, I_I
         if W_ID == warehouse['W_ID']:
             W_TAX = warehouse['W_TAX']
             break
-        # if more than one node, and the warehouse isn't the right node, must search for proper W_ID
-        else:
-            for addr in server.mem_info:
-                if server.mem_info[addr] > W_ID and W_ID > server.mem_info[addr] - 1:
-                    # found the node where warehouse is
-                    for connection in server.connections:
-                        # look for the socket to that node
-                        if connection.getpeername() == addr:
-                            # send the op
-                            connection.send(str.encode('getwarehousetax'))
-                            # return None when operation is sent to other node.
-                            return None
-                        if connection.getsockname() == addr:
-                            # send the op
-                            connection.send(str.encode('getwarehousetax'))
-                            # return None when operation is sent to other node
-                            return None
-            return False
     for district in districtTable:
         if D_W_ID == district['D_W_ID'] and D_ID == district['D_ID']:
             D_TAX = district['D_TAX']
