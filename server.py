@@ -771,8 +771,6 @@ class Server:
             return self.get_district_info_max()
         elif op == 'cust_max':
             return self.get_customer_info_max()
-        elif op == 'getwarehousetax':
-            return tpc_c.get_warehouse(self.warehouseTable)
         else:
             # return this if unrecognizable operation
             return False
