@@ -54,12 +54,17 @@ class Server:
 
     # misc stores so that benchmark can get values it needs from other servers. initialize them to none so that
     # benchmark must wait until it receives the values
-    misc = {'W_TAX': None, 'D_TAX': None, 'D_NEXT_O_ID': None, 'C_DISCOUNT': None, 'C_LAST': None, 'C_CREDIT': None}
+    misc = {'W_TAX': None, 'D_TAX': None, 'D_NEXT_O_ID': None, 'C_DISCOUNT': None, 'C_LAST': None, 'C_CREDIT': None,
+            'S_QUANTITY': None, 'S_YTD': None, 'S_ORDER_CNT': None, 'S_REMOTE_CNT': None, 'S_DATA': None,
+            'S_DIST_01': None, 'S_DIST_02': None, 'S_DIST_03': None, 'S_DIST_04': None, 'S_DIST_05': None,
+            'S_DIST_06': None, 'S_DIST_07': None, 'S_DIST_08': None, 'S_DIST_09': None, 'S_DIST_10': None,
+            'S_DIST_xx': None}
 
     # stores address and ports of nodes to be connected to
     address_list = []
     port_list = []
     config_flag = 0
+    pad_len = 1024
 
     def __init__(self, my_port, isConnect, args=None):
         try:
@@ -110,6 +115,8 @@ class Server:
         self.warehouse_info[(self.my_address, self.my_port)] = self.my_warehouses_thresh
         self.warehouseTable[0]['W_ID'] = int(self.my_warehouses_thresh)
         self.warehouseTable[0]['W_NAME'] = ('Warehouse ' + str(self.my_warehouses_thresh))
+        for i in range(0, 100000):
+            self.stockTable[i]['S_W_ID'] = int(self.my_warehouses_thresh)
 
     def get_warehouse_info_max(self):
         max_warehouse = 0
@@ -139,7 +146,19 @@ class Server:
         self.customer_info[(self.my_address, self.my_port)] = self.my_customers_thresh
         j = 1
         k = 1
-        print(self.my_districts_thresh)
+        if network_max >= 30000:
+            for i in range(1, 30001):
+                self.customerTable[i-1]['C_ID'] = ((self.my_warehouses_thresh-1)*30000) + i
+                self.customerTable[i-1]['C_W_ID'] = int(self.my_warehouses_thresh)
+                self.customerTable[i-1]['C_D_ID'] = j + (self.my_districts_thresh-10)
+                k += 1
+                if k == 3001:
+                    k = 1
+                    j += 1
+
+    def fix_firs_serv_num(self, network_max):
+        j = 1
+        k = 1
         if network_max >= 30000:
             for i in range(1, 30001):
                 self.customerTable[i-1]['C_ID'] = ((self.my_warehouses_thresh-1)*30000) + i
@@ -482,7 +501,6 @@ class Server:
         return time_took
 
     def get_W_info(self, warehouseTable, W_ID, sender_mem):
-        print('in_w_info')
         for warehouse in warehouseTable:
             if W_ID == warehouse['W_ID']:
                 W_TAX = warehouse['W_TAX']
@@ -491,7 +509,8 @@ class Server:
             if self.warehouse_info[addr] == sender_mem:
                 for connection in self.connections:
                     if connection.getpeername() == addr:
-                        connection.send(str.encode('storeinfo,' + 'W_TAX,' + str(W_TAX)))
+                        op = self.pad_msg('storeinfo,' + 'W_TAX,' + str(W_TAX) + ', ')
+                        connection.send(str.encode(op))
                         return True
 
     def get_D_info(self, districtTable, D_ID, D_W_ID, sender_mem):
@@ -504,8 +523,8 @@ class Server:
             if self.warehouse_info[addr] == sender_mem:
                 for connection in self.connections:
                     if connection.getpeername() == addr:
-                        connection.send(
-                            str.encode('storeinfo,' + 'D_TAX,' + str(D_TAX) + ', ' + 'D_NEXT_O_ID,' + str(D_NEXT_O_ID)))
+                        op = self.pad_msg('storeinfo,' + 'D_TAX,' + str(D_TAX) + ', ' + 'D_NEXT_O_ID,' + str(D_NEXT_O_ID) + ',')
+                        connection.send(str.encode(op))
                         return True
 
     def get_C_info(self, customerTable, C_ID, C_D_ID, C_W_ID, sender_mem):
@@ -519,9 +538,56 @@ class Server:
             if self.warehouse_info[addr] == sender_mem:
                 for connection in self.connections:
                     if connection.getpeername() == addr:
-                        connection.send(str.encode('storeinfo,' + 'C_DISCOUNT,' + str(C_DISCOUNT) + ', ' + 'C_LAST,' +
-                                                   str(C_LAST) + ', ' + 'C_CREDIT,' + str(C_CREDIT)))
+                        op = self.pad_msg('storeinfo,' + 'C_DISCOUNT,' + str(C_DISCOUNT) + ', ' + 'C_LAST,' + str(C_LAST)
+                                          + ', ' + 'C_CREDIT,' + str(C_CREDIT) + ',')
+                        connection.send(str.encode(op))
+
                         return True
+
+    def get_S_info(self, stockTable, OL_I_ID, OL_SUPPLY_W_ID, D_ID, sender_mem):
+        for stock in stockTable:
+            if OL_I_ID == stock['S_I_ID'] and OL_SUPPLY_W_ID == stock['S_W_ID']:
+                S_QUANTITY = stock['S_QUANTITY']
+                S_YTD = stock['S_YTD']
+                S_ORDER_CNT = stock['S_ORDER_CNT']
+                S_REMOTE_CNT = stock['S_REMOTE_CNT']
+                S_DATA = stock['S_DATA']
+                if D_ID > 10:
+                    xx = D_ID - ((self.my_warehouses_thresh * 10)-10)
+                    S_DIST_xx = stock['S_DIST_' + '{0:0=2d}'.format(xx)]
+                else:
+                    S_DIST_xx = stock['S_DIST_' + '{0:0=2d}'.format(D_ID)]
+                break
+        for addr in self.warehouse_info:
+            if self.warehouse_info[addr] == sender_mem:
+                for connection in self.connections:
+                    if connection.getpeername() == addr:
+                        op = self.pad_msg('storeinfo,' + 'S_QUANTITY,' + str(S_QUANTITY) + ' , ' + 'S_YTD,' +
+                                                   str(S_YTD) + ', ' + 'S_ORDER_CNT,' + str(S_ORDER_CNT) + ', ' +
+                                                   'S_REMOTE_CNT,' + str(S_REMOTE_CNT) + ', ' + 'S_DATA,' + str(S_DATA)
+                                                   + ', ' + 'S_DIST_xx,' + str(S_DIST_xx) + ', ')
+                        connection.send(str.encode(op))
+
+                        return True
+
+    def update_S_info(self, stockTable, OL_I_ID, OL_SUPPLY_W_ID, S_QUANTITY, S_YTD, S_ORDER_CNT,
+                      S_REMOTE_CNT):
+        for stock in stockTable:
+            if OL_I_ID == stock['S_I_ID'] and OL_SUPPLY_W_ID == stock['S_W_ID']:
+                stock['S_QUANTITY'] = S_QUANTITY
+                stock['S_YTD'] = S_YTD
+                stock['S_ORDER_CNT'] = S_ORDER_CNT
+                stock['S_REMOTE_CNT'] = S_REMOTE_CNT
+                break
+        return 'S_info has been updated'
+
+    def pad_msg(self, og_msg):
+        leng = len(og_msg.encode("utf-8"))
+        if leng != self.pad_len:
+            pad_amt = self.pad_len - leng
+            add_amt = pad_amt * '-'
+            edit_msg = og_msg + add_amt
+        return edit_msg
 
     def newOrderTransaction(self, W_ID, D_W_ID, D_ID, C_W_ID, C_D_ID, C_ID, O_ENTRY_D, I_IDS, I_W_IDS, I_QTYS,
                             warehouseTable, districtTable, customerTable, itemTable, newOrderTable, orderLineTable,
@@ -534,34 +600,32 @@ class Server:
             if W_ID == warehouse['W_ID']:
                 W_TAX = warehouse['W_TAX']
                 self.misc['W_TAX'] = W_TAX
-                print(W_TAX)
                 break
             # if more than one node, and the warehouse isn't the right node, must search for proper W_ID.
             # this is implementation specific, other programs running the distributed version must replace this logic.
             else:
                 for addr in self.warehouse_info:
-                    if self.warehouse_info[addr] >= W_ID and W_ID > self.warehouse_info[addr] - 1:
+                    if self.warehouse_info[addr] >= W_ID > self.warehouse_info[addr] - 1:
                         # found the node where warehouse is
                         for connection in self.connections:
                             # look for the socket to that node
                             if connection.getpeername() == addr:
                                 # send the op
-                                connection.send(str.encode('get_W_info,' + str(W_ID) + ', ' + str(sender_mem)))
+                                op = self.pad_msg('get_W_info,' + str(W_ID) + ' , ' + str(sender_mem) + ', ')
+                                connection.send(str.encode(op))
                             if connection.getsockname() == addr:
                                 # send the op
-                                connection.send(str.encode('get_W_info,' + str(W_ID) + ', ' + str(sender_mem)))
+                                op = self.pad_msg('get_W_info,' + str(W_ID) + ' , ' + str(sender_mem) + ', ')
+                                connection.send(str.encode(op))
                 # until the other server actually has given this server the information it needs, to random task of setting
                 # x = 5
                 while self.misc['W_TAX'] is None:
                     x = 5
-                    # wait and do nothing until you get W_TAX
-                    #time.sleep(1)
                 W_TAX = self.misc['W_TAX']
-                print(W_TAX)
                 # make sure that W_TAX actually got changed to a value that it got
                 assert W_TAX != None
-        print('W_info done')
-        print()
+        #print('W_info done')
+        #print()
 
         for district in districtTable:
             found_in_own_district = False
@@ -570,41 +634,35 @@ class Server:
                 D_NEXT_O_ID = district['D_NEXT_O_ID']
                 district['D_NEXT_O_ID'] += 1
                 found_in_own_district = True
-                print(D_TAX)
-                print(D_NEXT_O_ID)
                 break
         if found_in_own_district is False:
             for addr in self.warehouse_info:
-                if self.district_info[addr] >= D_ID and D_ID > self.district_info[addr] - 10 and \
-                        self.warehouse_info[addr] >= D_W_ID and D_W_ID > self.warehouse_info[addr] - 1:
+                if self.district_info[addr] >= D_ID > self.district_info[addr] - 10 and \
+                        self.warehouse_info[addr] >= D_W_ID > self.warehouse_info[addr] - 1:
                     # found the node where district is
                     for connection in self.connections:
                         # look for the socket to that node
                         if connection.getpeername() == addr:
-                            print('did i enter dist sending')
                             # send the op
-                            connection.send(
-                                str.encode('get_D_info,' + str(D_ID) + ', ' + str(D_W_ID) + ', ' + str(sender_mem)))
+                            op = self.pad_msg('get_D_info,' + str(D_ID) + ', ' + str(D_W_ID) + ', ' + str(sender_mem) + ', ')
+                            connection.send(str.encode(op))
                         if connection.getsockname() == addr:
                             # send the op
-                            print('did i also enter other dist sending')
-                            connection.send(
-                                str.encode('get_D_info,' + str(D_ID) + ', ' + str(D_W_ID) + ', ' + str(sender_mem)))
+                            op = self.pad_msg('get_D_info,' + str(D_ID) + ', ' + str(D_W_ID) + ', ' + str(sender_mem) + ', ')
+                            connection.send(str.encode(op))
                 # until the other server actually has given this server the information it needs, to random task of setting
                 # x = 5
             while self.misc['D_TAX'] is None and self.misc['D_NEXT_O_ID'] is None:
                 x = 5
             D_TAX = self.misc['D_TAX']
             D_NEXT_O_ID = self.misc['D_NEXT_O_ID']
-            print(D_TAX)
-            print(D_NEXT_O_ID)
             district['D_NEXT_O_ID'] += 1
 
             # make sure that D_TAX and D_NEXT_O_ID actually got changed to a value that it got
             assert D_TAX != None
             assert D_NEXT_O_ID != None
-        print('d_info done')
-        print()
+        #print('d_info done')
+        #print()
 
         customerInfo = []
         for customer in customerTable:
@@ -615,44 +673,38 @@ class Server:
                 C_CREDIT = customer['C_CREDIT']
                 customerInfo.append([C_DISCOUNT, C_LAST, C_CREDIT])
                 found_in_own_customer = True
-                print(C_DISCOUNT)
-                print(C_LAST)
-                print(C_CREDIT)
                 break
         if found_in_own_customer is False:
             for addr in self.warehouse_info:
-                if self.customer_info[addr] >= C_ID and C_ID > self.customer_info[addr] - 30000 and \
-                        self.district_info[addr] >= C_D_ID and C_D_ID > self.district_info[addr] - 10 and \
-                        self.warehouse_info[addr] >= C_W_ID and C_W_ID > self.warehouse_info[addr] - 1:
+                if self.customer_info[addr] >= C_ID > self.customer_info[addr] - 30000 and \
+                        self.district_info[addr] >= C_D_ID > self.district_info[addr] - 10 and \
+                        self.warehouse_info[addr] >= C_W_ID > self.warehouse_info[addr] - 1:
                     # found the node where district is
                     for connection in self.connections:
                         # look for the socket to that node
                         if connection.getpeername() == addr:
                             # send the op
-                            connection.send(str.encode(
-                                'get_C_info,' + str(C_ID) + ', ' + str(C_D_ID) + ', ' + str(C_W_ID) + ', ' + str(
-                                    sender_mem)))
+                            op = self.pad_msg('get_C_info,' + str(C_ID) + ', ' + str(C_D_ID) + ', ' + str(C_W_ID) + ', '
+                                              + str(sender_mem) + ', ')
+                            connection.send(str.encode(op))
                         if connection.getsockname() == addr:
                             # send the op
-                            connection.send(str.encode(
-                                'get_C_info,' + str(C_ID) + ', ' + str(C_D_ID) + ', ' + str(C_W_ID) + ', ' + str(
-                                    sender_mem)))
+                            op = self.pad_msg('get_C_info,' + str(C_ID) + ', ' + str(C_D_ID) + ', ' + str(C_W_ID) + ', '
+                                              + str(sender_mem) + ', ')
+                            connection.send(str.encode(op))
             # until the other server actually has given this server the information it needs, to random task of setting
             # x = 5
-            print('before customer while')
             while self.misc['C_DISCOUNT'] is None and self.misc['C_LAST'] is None and self.misc['C_CREDIT'] is None:
                 x = 5
             C_DISCOUNT = self.misc['C_DISCOUNT']
             C_LAST = self.misc['C_LAST']
             C_CREDIT = self.misc['C_CREDIT']
             customerInfo.append([C_DISCOUNT, C_LAST, C_CREDIT])
-            print(C_DISCOUNT)
-            print(C_LAST)
-            print(C_CREDIT)
-            assert C_DISCOUNT != None
-            assert C_LAST != None
-            assert C_CREDIT != None
-            print('c_info done')
+        assert C_DISCOUNT != None
+        assert C_LAST != None
+        assert C_CREDIT != None
+        #print('c_info done')
+        #print()
 
         # ------------------------------------------------------------------------------------------------------------------
         # Adding the order to the orderTable and newOrderTable
@@ -671,11 +723,11 @@ class Server:
             for item in itemTable:
                 if I_IDS[i] == item['I_ID']:
                     items.append([item['I_PRICE'], item['I_NAME'], item['I_DATA']])
-                    badItemNumFlag = False
+                    bad_item_num_flag = False
                     break
                 else:
-                    badItemNumFlag = True
-            if badItemNumFlag == True:
+                    bad_item_num_flag = True
+            if bad_item_num_flag == True:
                 items.append([])
 
         O_CARRIER_ID = None
@@ -708,8 +760,10 @@ class Server:
             I_PRICE = itemInfo[0]
             I_NAME = itemInfo[1]
             I_DATA = itemInfo[2]
+            in_my_stock_table = False
             for stock in stockTable:
                 if OL_I_ID == stock['S_I_ID'] and OL_SUPPLY_W_ID == stock['S_W_ID']:
+                    in_my_stock_table = True
                     S_QUANTITY = stock['S_QUANTITY']
                     S_YTD = stock['S_YTD']
                     S_ORDER_CNT = stock['S_ORDER_CNT']
@@ -717,6 +771,41 @@ class Server:
                     S_DATA = stock['S_DATA']
                     S_DIST_xx = ['S_DIST_' + '{0:0=2d}'.format(D_ID)]
                     break
+            if in_my_stock_table is False:
+                for addr in self.warehouse_info:
+                    if self.warehouse_info[addr] >= OL_SUPPLY_W_ID > self.warehouse_info[addr] - 1:
+                        for connection in self.connections:
+                            # look for the socket to that node
+                            if connection.getpeername() == addr:
+                                # send the op
+                                op = self.pad_msg('get_S_info,' + str(OL_I_ID) + ', ' + str(OL_SUPPLY_W_ID) + ', ' + str(
+                                        D_ID) + ', ' + str(sender_mem) + ', ')
+                                connection.send(str.encode(op))
+                            if connection.getsockname() == addr:
+                                # send the op
+                                op = self.pad_msg('get_S_info,' + str(OL_I_ID) + ', ' + str(OL_SUPPLY_W_ID) + ', ' + str(
+                                        D_ID) + ', ' + str(sender_mem) + ', ')
+                                connection.send(str.encode(op))
+                while self.misc['S_QUANTITY'] is None and self.misc['S_YTD'] is None and self.misc['S_ORDER_CNT'] \
+                        is None and self.misc['S_REMOTE_CNT'] is None and self.misc['S_DATA'] is None and \
+                        self.misc['S_DIST_' + '{0:0=2d}'.format(D_ID - ((W_ID * 10)-10))] is None:
+                    x = 5
+                S_QUANTITY = self.misc['S_QUANTITY']
+                S_YTD = self.misc['S_YTD']
+                S_ORDER_CNT = self.misc['S_ORDER_CNT']
+                S_REMOTE_CNT = self.misc['S_REMOTE_CNT']
+                S_DATA = self.misc['S_DATA']
+                S_DIST_xx = self.misc['S_DIST_xx']
+                #S_DIST_xx = self.misc['S_DIST_' + '{0:0=2d}'.format(D_ID - ((W_ID * 10)-10))]
+
+            assert S_QUANTITY != None
+            assert S_YTD != None
+            assert S_ORDER_CNT != None
+            assert S_REMOTE_CNT != None
+            assert S_DATA != None
+            assert S_DIST_xx != None
+            #print('s_info done')
+
             if S_QUANTITY >= OL_QUANTITY + 10:
                 S_QUANTITY -= OL_QUANTITY
             else:
@@ -726,15 +815,34 @@ class Server:
             if OL_SUPPLY_W_ID != W_ID:
                 S_REMOTE_CNT += 1
 
+            in_my_stock_table = False
             # Updating stock table
             for stock in stockTable:
                 if OL_I_ID == stock['S_I_ID'] and OL_SUPPLY_W_ID == stock['S_W_ID']:
+                    in_my_stock_table = True
                     stock['S_QUANTITY'] = S_QUANTITY
                     stock['S_YTD'] = S_YTD
                     stock['S_ORDER_CNT'] = S_ORDER_CNT
                     stock['S_REMOTE_CNT'] = S_REMOTE_CNT
                     break
-
+            if in_my_stock_table is False:
+                for addr in self.warehouse_info:
+                    if self.warehouse_info[addr] >= OL_SUPPLY_W_ID > self.warehouse_info[addr] - 1:
+                        for connection in self.connections:
+                            # look for the socket to that node
+                            if connection.getpeername() == addr:
+                                # send the op
+                                op = self.pad_msg('update_S_info,' + str(OL_I_ID) + ', ' + str(OL_SUPPLY_W_ID) + ', ' +
+                                    str(S_QUANTITY) + ', ' + str(S_YTD) + ', ' + str(S_ORDER_CNT) + ', ' +
+                                    str(S_REMOTE_CNT) + ', ')
+                                connection.send(str.encode(op))
+                            if connection.getsockname() == addr:
+                                # send the op
+                                op = self.pad_msg('update_S_info,' + str(OL_I_ID) + ', ' + str(OL_SUPPLY_W_ID) + ', ' +
+                                                  str(S_QUANTITY) + ', ' + str(S_YTD) + ', ' + str(S_ORDER_CNT) + ', ' +
+                                                  str(S_REMOTE_CNT) + ', ')
+                                connection.send(str.encode(op))
+                #print('s_info updated')
             OL_AMOUNT = OL_QUANTITY * I_PRICE
             TOTAL_AMOUNT += OL_AMOUNT
 
@@ -744,8 +852,7 @@ class Server:
                 BRAND_GENERIC = 'G'
 
             tpc_c.addOrderLine(orderLineTable, D_NEXT_O_ID, D_ID, W_ID, OL_NUMBER, OL_I_ID, OL_SUPPLY_W_ID, O_ENTRY_D,
-                         OL_QUANTITY, OL_AMOUNT,
-                         S_DIST_xx)
+                         OL_QUANTITY, OL_AMOUNT, S_DIST_xx)
 
             itemInfo.append([I_NAME, S_QUANTITY, BRAND_GENERIC, I_PRICE, OL_AMOUNT])
 
@@ -765,6 +872,10 @@ class Server:
                 newsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 self.csock.append(newsock)
                 newsock.connect((address, port))
+
+                #read = newsock.makefile('r')
+                #write = newsock.makefile('w')
+
                 # add newsoc to this nodes connections list
                 self.connections.append(newsock)
                 print("Connected to: ", address, ":", port)
@@ -773,6 +884,9 @@ class Server:
                 rThread = threading.Thread(target=self.recvMsg, args=(None, None, newsock,))
                 rThread.daemon = True
                 rThread.start()
+
+        if len(self.address_list) == 0:
+            self.fix_firs_serv_num(self.my_customers_thresh)
 
         # thread to send data to every node in connections[]
         iThread = threading.Thread(target=self.sendMsg)
@@ -783,6 +897,8 @@ class Server:
         while True:
             # accepts connection between client (other server node)
             conn, address = self.sock.accept()
+            #read = conn.makefile('r')
+            #write = conn.makefile('w')
             print(conn)
             print('Accepted connection from ', address, ' successfully!')
             # send the new connection the following message
@@ -808,18 +924,29 @@ class Server:
         # welcome = 'Connection successful. Welcome! \n <w, key, value> OR <r, key>'
         # conn.send(welcome.encode('utf-8'))
 
+
     # receive msg from other nodes
     # check if msg is an operation, if so perform it
     # if not just display it
     # conn != None means its a server socket
     # sock != None means its a client socket
     def recvMsg(self, conn=None, address=None, sock=None):
+        #print(read)
+        #print(write)
         # recv msg from other nodes.
         while True:
             if conn is None:
-                data = sock.recv(1024)
+                data = sock.recv(self.pad_len)
+                #data = sock.recv(1024)
+                #sock.close()
+                #data = read.readline()
+                #read.close()
             else:
-                data = conn.recv(1024)
+                data = conn.recv(self.pad_len)
+                #data = conn.recv(1024)
+                #conn.close()
+                #data = read.readline()
+                #read.close()
             if not data:
                 break
             dec_data = data.decode('utf-8')
@@ -963,21 +1090,21 @@ class Server:
             sender_mem = self.warehouse_info[(self.my_address, self.my_port)]
             # chooses constant W_ID based off of total number of server nodes
             W_ID = random.randint(1, len(self.warehouse_info))
-            print('beginning W_ID' + str(W_ID))
+            #print('beginning W_ID' + str(W_ID))
 
             # chooses specific D_ID that corresponds to W_ID, e.g. if W_ID = 2, then starting_district and
             # ending_district will correspond to this ID and be in range (11, 20)
             starting_district = ((W_ID*10)-9)
             ending_district = (W_ID*10)
             D_ID = random.randint(starting_district, ending_district)
-            print('beginning D_ID' + str(D_ID))
+            #print('beginning D_ID' + str(D_ID))
 
             # chooses specific C_ID from the NURand function defined in TPC-C spec. C_ID_offset is implementation
             # specific, offsets value produced by NURand it so it corrects C_ID to be respective of node with W_ID
             C_ID_offset = (D_ID-1) * 3000
 
             C_ID = tpc_c.NURand(1023, 1, 3000) + C_ID_offset
-            print('beginning C_ID' + str(C_ID))
+            #print('beginning C_ID' + str(C_ID))
 
             ol_cnt = random.randint(5, 15)
             rbk = random.randint(1, 100)
@@ -992,14 +1119,15 @@ class Server:
                 I_IDS.append(OL_I_ID)
                 x = random.randint(1, 100)
                 if x > 1:
-                    OL_SUPPLY_W_ID = W_ID
+                    OL_SUPPLY_W_ID = self.my_warehouses_thresh
                 if x == 1:
                     list_W_IDS = []
-                    for i in range(1, len(self.warehouse_info)):
+                    for i in range(1, len(self.warehouse_info)+1):
                         list_W_IDS.append(i)
-                    list_W_IDS.remove(W_ID)
-                    OL_SUPPLY_W_ID = list_W_IDS[random.randint(0, (len(list_W_IDS)))]
+                    list_W_IDS.remove(self.my_warehouses_thresh)
+                    OL_SUPPLY_W_ID = list_W_IDS[random.randint(0, (len(list_W_IDS)-1))]
                 I_W_IDS.append(OL_SUPPLY_W_ID)
+                #print(I_W_IDS)
                 OL_QUANTITY = random.randint(1, 10)
                 I_QTYS.append(OL_QUANTITY)
             O_ENTRY_D = date.today().strftime("%d/%m/%Y")
@@ -1098,6 +1226,25 @@ class Server:
                 self.misc[dec_data[3].strip()] = dec_data[4].strip()
                 self.misc[dec_data[5].strip()] = dec_data[6].strip()
                 return 'C_info has been set'
+            if dec_data[1].strip() == 'S_QUANTITY' and dec_data[3].strip() == 'S_YTD' and dec_data[5].strip() == \
+                    'S_ORDER_CNT' and dec_data[7].strip() == 'S_REMOTE_CNT' and dec_data[9].strip() == 'S_DATA' and \
+                    dec_data[11].strip() == 'S_DIST_xx':
+                self.misc[dec_data[1].strip()] = int(dec_data[2].strip())
+                self.misc[dec_data[3].strip()] = int(dec_data[4].strip())
+                self.misc[dec_data[5].strip()] = int(dec_data[6].strip())
+                self.misc[dec_data[7].strip()] = int(dec_data[8].strip())
+                self.misc[dec_data[9].strip()] = dec_data[10].strip()
+                self.misc[dec_data[11].strip()] = dec_data[12].strip()
+
+                print('dec_data[11]: ')
+                print(dec_data[11].strip())
+
+                print('S_DIST_xx from dec_data[12]: ')
+                print(dec_data[12].strip())
+
+                print('S_DIST_xx from self: ')
+                print(self.misc[dec_data[11].strip()])
+                return 'S_info has been set'
 
         elif op == 'get_W_info':
             W_ID = int(dec_data[1].strip())
@@ -1120,10 +1267,82 @@ class Server:
             ret_val = self.get_C_info(self.customerTable, C_ID, C_D_ID, C_W_ID, sender_mem)
             return ret_val
 
-        elif op == 'c_id_test':
-            print('C_W_ID: ' + str(self.customerTable[9445]['C_W_ID']))
-            print('C_D_ID: ' + str(self.customerTable[9445]['C_D_ID']))
-            print('C_ID: ' + str(self.customerTable[9445]['C_ID']))
+        elif op == 'get_S_info':
+            OL_I_ID = int(dec_data[1].strip())
+            OL_SUPPLY_W_ID = int(dec_data[2].strip())
+            D_ID = int(dec_data[3].strip())
+            sender_mem = int(dec_data[4].strip())
+            ret_val = self.get_S_info(self.stockTable, OL_I_ID, OL_SUPPLY_W_ID, D_ID, sender_mem)
+            return ret_val
+
+        elif op == 'update_S_info':
+            OL_I_ID = int(dec_data[1].strip())
+            OL_SUPPLY_W_ID = int(dec_data[2].strip())
+            S_QUANTITY = int(dec_data[3].strip())
+            S_YTD = int(dec_data[4].strip())
+            S_ORDER_CNT = int(dec_data[5].strip())
+            S_REMOTE_CNT = int(dec_data[6].strip())
+            ret_val = self.update_S_info(self.stockTable, OL_I_ID, OL_SUPPLY_W_ID, S_QUANTITY, S_YTD, S_ORDER_CNT, S_REMOTE_CNT)
+            return ret_val
+
+        elif op == 'neworder_test':
+            start = time.process_time()
+            for i in range(1000):
+                sender_mem = self.warehouse_info[(self.my_address, self.my_port)]
+                # chooses constant W_ID based off of total number of server nodes
+                W_ID = random.randint(1, len(self.warehouse_info))
+                # print('beginning W_ID' + str(W_ID))
+
+                # chooses specific D_ID that corresponds to W_ID, e.g. if W_ID = 2, then starting_district and
+                # ending_district will correspond to this ID and be in range (11, 20)
+                starting_district = ((W_ID * 10) - 9)
+                ending_district = (W_ID * 10)
+                D_ID = random.randint(starting_district, ending_district)
+                # print('beginning D_ID' + str(D_ID))
+
+                # chooses specific C_ID from the NURand function defined in TPC-C spec. C_ID_offset is implementation
+                # specific, offsets value produced by NURand it so it corrects C_ID to be respective of node with W_ID
+                C_ID_offset = (D_ID - 1) * 3000
+
+                C_ID = tpc_c.NURand(1023, 1, 3000) + C_ID_offset
+                # print('beginning C_ID' + str(C_ID))
+
+                ol_cnt = random.randint(5, 15)
+                rbk = random.randint(1, 100)
+                I_IDS = []
+                I_W_IDS = []
+                I_QTYS = []
+                for item in range(ol_cnt):
+                    if item == (ol_cnt - 1) and rbk == 1:
+                        OL_I_ID = 3000000
+                    else:
+                        OL_I_ID = tpc_c.NURand(8191, 1, 100000)
+                    I_IDS.append(OL_I_ID)
+                    x = random.randint(1, 100)
+                    if x > 1:
+                        OL_SUPPLY_W_ID = self.my_warehouses_thresh
+                    if x == 1:
+                        list_W_IDS = []
+                        for i in range(1, len(self.warehouse_info) + 1):
+                            list_W_IDS.append(i)
+                        list_W_IDS.remove(self.my_warehouses_thresh)
+                        OL_SUPPLY_W_ID = list_W_IDS[random.randint(0, (len(list_W_IDS) - 1))]
+                    I_W_IDS.append(OL_SUPPLY_W_ID)
+                    # print(I_W_IDS)
+                    OL_QUANTITY = random.randint(1, 10)
+                    I_QTYS.append(OL_QUANTITY)
+                O_ENTRY_D = date.today().strftime("%d/%m/%Y")
+                start = time.process_time()
+                self.newOrderTransaction(W_ID, W_ID, D_ID, W_ID, D_ID, C_ID, O_ENTRY_D, I_IDS, I_W_IDS, I_QTYS,
+                                         self.warehouseTable, self.districtTable, self.customerTable, self.itemTable,
+                                         self.newOrderTable, self.orderLineTable, self.orderTable, self.stockTable,
+                                         sender_mem)
+            end = time.process_time()
+            print('start: ' + str(start))
+            print('end: ' + str(end))
+            ret_val = end - start
+            time.sleep(1)
+            return ret_val
 
         else:
             # return this if op is none of the above
