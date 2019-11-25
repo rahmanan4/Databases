@@ -661,6 +661,49 @@ class Server:
         # write test that fills in all dict values 0-299, used before readtests
         elif op == 'wfr':
             ret_val = self.writeforread()
+        # TPC-C test that returns tpmC business throughput
+        elif op == 'tpm':
+            if len(self.connections) == 0:
+                self.fix_firs_serv_num(30000)
+                print('Fixed')
+            runs = 1
+            secs = 60
+            total = 0
+            i = 0
+            trxns = ['neworder', 'payment', 'orderstatus', 'delivery', 'stocklevel']
+            trxns_perf_list = []
+            stop_threads = False
+            for _ in range(10000):
+                j = random.randint(0, (len(trxns)-1))
+                trxns_perf_list.append(trxns[j])
+
+            for i in range(runs):
+                threads = []
+                stop_threads = False
+                end = datetime.datetime.now() + datetime.timedelta(seconds=secs)
+                while True:
+                    if datetime.datetime.now() >= end:
+                        break
+                    trxn = trxns_perf_list[i]
+                    trxn_thread = threading.Thread(target=self.tpc_test, args=(trxn, lambda: stop_threads))
+                    threads.append(trxn_thread)
+                    trxn_thread.daemon = True
+                    trxn_thread.start()
+                    if i == (len(trxns_perf_list)-1):
+                        i = 0
+                    else:
+                        i += 1
+                print('run done @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+                #stop_threads = True
+                #for thread in threads:
+                #    thread.join()
+                trxn_count = self.trxn_count
+                self.trxn_count = 0
+                total += trxn_count
+            print('tpm done @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+            avg = total / runs
+            time.sleep(5)
+            return 'avg transactions completed in ' + str(secs) + ' secs: ' + str(avg)
         # tpc_c new order transaction profile, returns time taken to perform this
         elif op == 'neworder':
             W_ID = 1
@@ -783,11 +826,3 @@ if len(sys.argv) == 2:
 else:
     server = Server(sys.argv[1], True, sys.argv[2:])
     server.run()
-
-'''
-cd /Users/adilrahman/PycharmProjects/MastersProj
-python3.6 server.py 10000
-
-cd /Users/adilrahman/PycharmProjects/MastersProj
-python3.6 server.py 10005 127.0.0.1 10000
-'''
