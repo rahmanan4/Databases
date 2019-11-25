@@ -1,116 +1,197 @@
 import random
 import time
 from datetime import date
+import datetime
+import threading
 
 
 def createWarehouseTable(numWarehouses):
     warehouseTable = []
-    streetList = ['245 Blue Street', '324 Red Street', '435 Green Street']
-    cityList = ['San Jose', 'Sunnyvale', 'Mountain View']
-    zipList = [95003, 52034, 49563]
-    posNegList = [1, -1]
     for i in range(1, numWarehouses+1):
-        randW_STREET_1 = random.randint(0, (len(streetList) - 1))
-        randW_STREET_2 = random.randint(0, (len(streetList) - 1))
-        randW_CITY = random.randint(0, (len(cityList) - 1))
-        randW_ZIP = random.randint(0, (len(zipList) - 1))
         warehouseTable.append({'W_ID': i,
-                               'W_NAME': ('Warehouse ' + str(i)),
-                               'W_STREET_1': streetList[randW_STREET_1],
-                               'W_STREET_2': streetList[randW_STREET_2],
-                               'W_CITY': cityList[randW_CITY],
-                               'W_STATE': 'CA',
-                               'W_ZIP': zipList[randW_ZIP],
-                               'W_TAX': (posNegList[random.randint(0, (len(posNegList) - 1))] * round(random.random(), 4)),
-                               'W_YTD': (posNegList[random.randint(0, (len(posNegList) - 1))] * round(random.uniform(1000000000, 9999999999), 2))})
+                               'W_NAME': create_a_string(True, False, 6, 10),
+                               'W_STREET_1': create_a_string(True, False, 10, 20),
+                               'W_STREET_2': create_a_string(True, False, 10, 20),
+                               'W_CITY': create_a_string(True, False, 10, 20),
+                               'W_STATE': create_a_string(True, False, 1, 2),
+                               'W_ZIP': create_zip(),
+                               'W_TAX': round(random.uniform(0, 0.2), 4),
+                               'W_YTD': round(float(300000), 2)})
     return warehouseTable
 
 
 def createDistrictTable(numOfWarehouses):
     districtTable = []
     numDistricts = 10
-    streetList = ['245 Blue Street', '324 Red Street', '435 Green Street']
-    cityList = ['San Jose', 'Sunnyvale', 'Mountain View']
-    zipList = [95003, 52034, 49563]
-    posNegList = [1, -1]
     districtWarehouseNum = 1
     for _ in range(1, numOfWarehouses+1):
         for i in range(1, numDistricts+1):
-            randD_STREET_1 = random.randint(0, (len(streetList)-1))
-            randD_STREET_2 = random.randint(0, (len(streetList)-1))
-            randD_CITY = random.randint(0, (len(cityList)-1))
-            randD_ZIP = random.randint(0, (len(zipList)-1))
             districtTable.append({'D_ID': i,
                                   'D_W_ID': districtWarehouseNum,
                                   'D_NAME': ('District ' + str(i)),
-                                  'D_STREET_1': streetList[randD_STREET_1],
-                                  'D_STREET_2': streetList[randD_STREET_2],
-                                  'D_CITY': cityList[randD_CITY],
-                                  'D_STATE': 'CA',
-                                  'D_ZIP': zipList[randD_ZIP],
-                                  'D_TAX': (posNegList[random.randint(0, (len(posNegList) - 1))] * round(random.random(), 4)),
-                                  'D_YTD': (posNegList[random.randint(0, (len(posNegList) - 1))] * round(random.uniform(1000000000, 9999999999), 2)),
-                                  'D_NEXT_O_ID': i+1})
+                                  'D_STREET_1': create_a_string(True, False, 10, 20),
+                                  'D_STREET_2': create_a_string(True, False, 10, 20),
+                                  'D_CITY': create_a_string(True, False, 10, 20),
+                                  'D_STATE': create_a_string(True, False, 1, 2),
+                                  'D_ZIP': create_zip(),
+                                  'D_TAX': round(random.uniform(0, 0.2), 4),
+                                  'D_YTD': round(float(30000), 2),
+                                  'D_NEXT_O_ID': 3001})
         districtWarehouseNum += 1
     return districtTable
+
+
+def create_last_name_run(lastNameList, NURand_num):
+    randC_LAST = ''
+    NURand_num = str(NURand_num)
+    for num in NURand_num:
+        if num == '0':
+            randC_LAST += lastNameList[0]
+        elif num == '1':
+            randC_LAST += lastNameList[1]
+        elif num == '2':
+            randC_LAST += lastNameList[2]
+        elif num == '3':
+            randC_LAST += lastNameList[3]
+        elif num == '4':
+            randC_LAST += lastNameList[4]
+        elif num == '5':
+            randC_LAST += lastNameList[5]
+        elif num == '6':
+            randC_LAST += lastNameList[6]
+        elif num == '7':
+            randC_LAST += lastNameList[7]
+        elif num == '8':
+            randC_LAST += lastNameList[8]
+        else:
+            randC_LAST += lastNameList[9]
+    return randC_LAST
+
+
+def create_last_name(lastNameList, i):
+    randC_LAST = ''
+    if i < 1000:
+        if i < 10:
+            rand_num = '00' + str(i)
+        elif i < 100:
+            rand_num = '0' + str(i)
+        else:
+            rand_num = str(i)
+    else:
+        rand_num = str(NURand(255, 0, 999))
+    for num in rand_num:
+        if num == '0':
+            randC_LAST += lastNameList[0]
+        elif num == '1':
+            randC_LAST += lastNameList[1]
+        elif num == '2':
+            randC_LAST += lastNameList[2]
+        elif num == '3':
+            randC_LAST += lastNameList[3]
+        elif num == '4':
+            randC_LAST += lastNameList[4]
+        elif num == '5':
+            randC_LAST += lastNameList[5]
+        elif num == '6':
+            randC_LAST += lastNameList[6]
+        elif num == '7':
+            randC_LAST += lastNameList[7]
+        elif num == '8':
+            randC_LAST += lastNameList[8]
+        else:
+            randC_LAST += lastNameList[9]
+    return randC_LAST
+
+
+def create_zip():
+    randZIP = random.randint(0, 10000)
+    if 100 >= randZIP < 1000:
+        randZIP = '0' + str(randZIP) + '1111'
+    if randZIP < 100:
+        randZIP = '00' + str(randZIP) + '1111'
+    return randZIP
 
 
 def createCustomerTable(numOfWarehouses):
     customerTable = []
     numOfDistricts = 10
     numCustomers = 3000
-    firstNameList = ['Alice', 'Bob', 'Eve']
-    middleNameList = ['Ah', 'Bt', 'Es']
-    lastNameList = ['Robinson', 'Nguyen', 'Juarez']
-    streetList = ['485 Orange Street', '3056 Black Road', '3239 Brown Court']
-    cityList = ['San Jose', 'Sunnyvale', 'Mountain View']
-    zipList = [95003, 52034, 49563]
-    phoneList = ['665-340-3405', '534-349-6075', '394-596-2345']
-    creditList = ['GC', 'BC']
-    posNegList = [1, -1]
+    lastNameList = ['BAR', 'OUGHT', 'ABLE', 'PRI', 'PRES', 'ESE', 'ANTI', 'CALLY', 'ATION', 'EING']
     customerWarehouseNum = 1
     customerDistrictNum = 1
     for k in range(1, numOfWarehouses+1):
         for j in range(1, numOfDistricts+1):
             for i in range(1, numCustomers+1):
-                randC_FIRST = random.randint(0, (len(firstNameList)-1))
-                randC_MIDDLE = random.randint(0, (len(middleNameList)-1))
-                randC_LAST = random.randint(0, (len(lastNameList)-1))
-                randC_STREET_1 = random.randint(0, (len(streetList) - 1))
-                randC_STREET_2 = random.randint(0, (len(streetList) - 1))
-                randC_CITY = random.randint(0, (len(cityList) - 1))
-                randC_ZIP = random.randint(0, (len(zipList) - 1))
-                randC_PHONE = random.randint(0, (len(phoneList) - 1))
-                randC_CREDIT = random.randint(0, (len(creditList) - 1))
-                customerTable.append({'C_ID': i,
+                prob = random.randint(1, 100)
+                if prob < 10:
+                    customerTable.append({'C_ID': i,
                                       'C_D_ID': customerDistrictNum,
                                       'C_W_ID': customerWarehouseNum,
-                                      'C_FIRST': firstNameList[randC_FIRST],
-                                      'C_MIDDLE': middleNameList[randC_MIDDLE],
-                                      'C_LAST': lastNameList[randC_LAST],
-                                      'C_STREET_1': streetList[randC_STREET_1],
-                                      'C_STREET_2': streetList[randC_STREET_2],
-                                      'C_CITY': cityList[randC_CITY],
-                                      'C_STATE': 'CA',
-                                      'C_ZIP': zipList[randC_ZIP],
-                                      'C_PHONE': phoneList[randC_PHONE],
+                                      'C_FIRST': create_a_string(True, False, 8, 16),
+                                      'C_MIDDLE': 'OE',
+                                      'C_LAST': create_last_name(lastNameList, i),
+                                      'C_STREET_1': create_a_string(True, False, 10, 20),
+                                      'C_STREET_2': create_a_string(True, False, 10, 20),
+                                      'C_CITY': create_a_string(True, False, 10, 20),
+                                      'C_STATE': create_a_string(True, False, 1, 2),
+                                      'C_ZIP': create_zip(),
+                                      'C_PHONE': create_n_string(0, 16),
                                       'C_SINCE': date.today().strftime("%d/%m/%Y"),
-                                      'C_CREDIT': creditList[randC_CREDIT],
-                                      'C_CREDIT_LIM': (posNegList[random.randint(0, (len(posNegList) - 1))] * round(random.uniform(1000000000, 9999999999), 2)),
-                                      'C_DISCOUNT': (posNegList[random.randint(0, (len(posNegList) - 1))] * round(random.random(), 4)),
-                                      'C_BALANCE': (posNegList[random.randint(0, (len(posNegList) - 1))] * round(random.uniform(1000000000, 9999999999), 2)),
-                                      'C_YTD_PAYMENT': (posNegList[random.randint(0, (len(posNegList) - 1))] * round(random.uniform(1000000000, 9999999999), 2)),
-                                      'C_PAYMENT_CNT': int(random.uniform(1000, 9999)),
-                                      'C_DELIVERY_CNT': int(random.uniform(1000, 9999)),
-                                      'C_DATA': 'Miscellaneous Information'})
+                                      'C_CREDIT': 'BC',
+                                      'C_CREDIT_LIM': round(float(5000000), 2),
+                                      'C_DISCOUNT': round(random.uniform(0, 0.5), 4),
+                                      'C_BALANCE': round(float(-10), 2),
+                                      'C_YTD_PAYMENT': round(float(10), 2),
+                                      'C_PAYMENT_CNT': 1,
+                                      'C_DELIVERY_CNT': 0,
+                                      'C_DATA': create_a_string(True, False, 300, 500)})
+                else:
+                    customerTable.append({'C_ID': i,
+                                          'C_D_ID': customerDistrictNum,
+                                          'C_W_ID': customerWarehouseNum,
+                                          'C_FIRST': create_a_string(True, False, 8, 16),
+                                          'C_MIDDLE': 'OE',
+                                          'C_LAST': create_last_name(lastNameList, i),
+                                          'C_STREET_1': create_a_string(True, False, 10, 20),
+                                          'C_STREET_2': create_a_string(True, False, 10, 20),
+                                          'C_CITY': create_a_string(True, False, 10, 20),
+                                          'C_STATE': create_a_string(True, False, 1, 2),
+                                          'C_ZIP': create_zip(),
+                                          'C_PHONE': create_n_string(0, 16),
+                                          'C_SINCE': date.today().strftime("%d/%m/%Y"),
+                                          'C_CREDIT': 'GC',
+                                          'C_CREDIT_LIM': round(float(5000000), 2),
+                                          'C_DISCOUNT': round(random.uniform(0, 0.5), 4),
+                                          'C_BALANCE': round(float(-10), 2),
+                                          'C_YTD_PAYMENT': round(float(10), 2),
+                                          'C_PAYMENT_CNT': 1,
+                                          'C_DELIVERY_CNT': 0,
+                                          'C_DATA': create_a_string(True, False, 300, 500)})
                 if i == 3000:
                     customerDistrictNum += 1
         customerWarehouseNum += 1
     return customerTable
 
 
-def createHistoryTable():
+def createHistoryTable(numOfWarehouses):
     historyTable = []
+    numOfDistricts = 10
+    numCustomers = 3000
+    customerWarehouseNum = 1
+    customerDistrictNum = 1
+    for k in range(1, numOfWarehouses + 1):
+        for j in range(1, numOfDistricts + 1):
+            for i in range(1, numCustomers + 1):
+                historyTable.append({'H_C_ID': i,
+                                          'H_C_D_ID': customerDistrictNum,
+                                          'H_C_W_ID': customerWarehouseNum,
+                                          'H_DATE': date.today().strftime("%d/%m/%Y"),
+                                          'H_AMOUNT': round(float(10), 2),
+                                          'H_DATA': create_a_string(True, False, 12, 24)})
+
+                if i == 3000:
+                    customerDistrictNum += 1
+        customerWarehouseNum += 1
     return historyTable
 
 
@@ -127,6 +208,11 @@ def addToHistoryTable(historyTable, H_C_ID, H_C_D_ID, H_C_W_ID, H_D_ID, H_W_ID, 
 
 def createNewOrderTable():
     newOrderTable = []
+    #num_order_lines = 900
+    #for i in range(num_order_lines):
+        #newOrderTable.append({'NO_O_ID': ,
+         #                     'NO_D_ID': ,
+          #                    'NO_W_ID': })
     return newOrderTable
 
 
@@ -177,15 +263,67 @@ def addOrderLine(orderLineTable, OL_O_ID, OL_D_ID, OL_W_ID, OL_NUMBER, OL_I_ID, 
                            'OL_DIST_INFO': OL_DIST_INFO})
 
 
+def create_a_string(other, data, beg, end):
+    #alpha = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
+             #'v', 'w', 'x', 'y', 'z']
+    if other is True:
+        #a_string = ''
+        a_string_num = random.randint(beg, end)
+        a_string = a_string_num * 'a'
+        #for i in range(a_string_num):
+        #    letter_index = random.randint(0, (len(alpha)-1))
+        #    a_string += alpha[letter_index]
+        return a_string
+    if data is True:
+        prob = random.randint(0, 100)
+        #a_string = ''
+        a_string_data = random.randint(beg, end)
+        #for i in range(a_string_data):
+        #    letter_index = random.randint(0, (len(alpha)-1))
+        #    a_string += alpha[letter_index]
+        a_string = a_string_data * 'a'
+        if prob < 10:
+            ins_index = random.randint(0, (len(a_string)-1))
+            a_string = a_string[0:ins_index] + 'ORIGINAL' + a_string[ins_index:-1]
+        return a_string
+
+
+def create_zip():
+    randZIP = random.randint(0, 10000)
+    if 100 >= randZIP < 1000:
+        randZIP = '0' + str(randZIP) + '1111'
+    elif randZIP < 100:
+        randZIP = '00' + str(randZIP) + '1111'
+    else:
+        randZIP = randZIP
+    return randZIP
+
+
+def create_n_string(beg, end):
+    n_string = ''
+    for i in range(beg, end):
+        rand_int = random.randint(0, 9)
+        n_string += str(rand_int)
+    return n_string
+
+
 def createItemTable():
+    prob = random.randint(0, 100)
     itemTable = []
     itemNum = 100000
     for i in range(1, itemNum+1):
-        itemTable.append({'I_ID': i,
-                          'I_IM_ID': i,
-                          'I_NAME': ('Item ' + str(i)),
-                          'I_PRICE': round(random.uniform(100, 1000), 2),
-                          'I_DATA': 'brand info'})
+        if prob < 10:
+            itemTable.append({'I_ID': i,
+                            'I_IM_ID': random.randint(1, 10001),
+                            'I_NAME': create_a_string(True, False, 14, 24),
+                            'I_PRICE': round(random.uniform(100, 1000), 2),
+                            'I_DATA': create_a_string(False, True, 26, 50)})
+        else:
+            itemTable.append({'I_ID': i,
+                              'I_IM_ID': random.randint(1, 10001),
+                              'I_NAME': create_a_string(True, False, 14, 24),
+                              'I_PRICE': round(random.uniform(100, 1000), 2),
+                              'I_DATA': create_a_string(False, True, 26, 50)})
     return itemTable
 
 
@@ -193,26 +331,25 @@ def createStockTable(numWarehouse):
     stockTable = []
     numStocks = 100000
     stockWarehouseNum = 1
-    posNegList = [1, -1]
     for _ in range(1, numWarehouse+1):
         for i in range(1, numStocks+1):
             stockTable.append({'S_I_ID': i,
                                'S_W_ID': stockWarehouseNum,
-                               'S_QUANTITY': posNegList[random.randint(0, (len(posNegList) - 1))] * random.randint(1000, 10000),
-                               'S_DIST_01': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_02': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_03': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_04': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_05': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_06': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_07': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_08': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_09': 'iiiiooooppppiiiioooopppp',
-                               'S_DIST_10': 'iiiiooooppppiiiioooopppp',
-                               'S_YTD': random.randint(10000000, 100000000),
-                               'S_ORDER_CNT': random.randint(1000, 10000),
-                               'S_REMOTE_CNT': random.randint(1000, 10000),
-                               'S_DATA': 'Make information'})
+                               'S_QUANTITY': random.randint(10, 100),
+                               'S_DIST_01': create_a_string(True, False, 0, 24),
+                               'S_DIST_02': create_a_string(True, False, 0, 24),
+                               'S_DIST_03': create_a_string(True, False, 0, 24),
+                               'S_DIST_04': create_a_string(True, False, 0, 24),
+                               'S_DIST_05': create_a_string(True, False, 0, 24),
+                               'S_DIST_06': create_a_string(True, False, 0, 24),
+                               'S_DIST_07': create_a_string(True, False, 0, 24),
+                               'S_DIST_08': create_a_string(True, False, 0, 24),
+                               'S_DIST_09': create_a_string(True, False, 0, 24),
+                               'S_DIST_10': create_a_string(True, False, 0, 24),
+                               'S_YTD': 0,
+                               'S_ORDER_CNT': 0,
+                               'S_REMOTE_CNT': 0,
+                               'S_DATA': create_a_string(False, True, 26, 50)})
         stockWarehouseNum += 1
     return stockTable
 
@@ -220,13 +357,13 @@ def createStockTable(numWarehouse):
 # Calculate nonuniform random number for C_LAST, C_ID, or OL_I_ID
 def NURand(A, x, y):
     C = random.randint(0, A)
-    result = (((random.randint(0, A) or random.randint(x, y)) + C) % (y - x + 1)) + x
+    result = (((random.randint(0, A) | random.randint(x, y)) + C) % (y - x + 1)) + x
     return result
 
 
 def newOrderTransaction(W_ID, D_W_ID, D_ID, C_W_ID, C_D_ID, C_ID, O_ENTRY_D, I_IDS, I_W_IDS, I_QTYS,
                         warehouseTable, districtTable, customerTable, itemTable, newOrderTable, orderLineTable,
-                        orderTable, stockTable):
+                        orderTable, stockTable, sender_mem):
     stockTableInitial = stockTable.copy()
     # ------------------------------------------------------------------------------------------------------------------
     # Getting information from wareHouseTable, districtTable, customerTable
@@ -235,12 +372,14 @@ def newOrderTransaction(W_ID, D_W_ID, D_ID, C_W_ID, C_D_ID, C_ID, O_ENTRY_D, I_I
         if W_ID == warehouse['W_ID']:
             W_TAX = warehouse['W_TAX']
             break
+
     for district in districtTable:
         if D_W_ID == district['D_W_ID'] and D_ID == district['D_ID']:
             D_TAX = district['D_TAX']
             D_NEXT_O_ID = district['D_NEXT_O_ID']
             district['D_NEXT_O_ID'] += 1
             break
+
     customerInfo = []
     for customer in customerTable:
         if C_W_ID == customer['C_W_ID'] and C_D_ID == customer['C_D_ID'] and C_ID == customer['C_ID']:
@@ -288,6 +427,7 @@ def newOrderTransaction(W_ID, D_W_ID, D_ID, C_W_ID, C_D_ID, C_ID, O_ENTRY_D, I_I
         # Fixed 1% of the New-Order Transaction are chosen at random to simulate data errors, determined based off of
         #   rbk input where if rbk is set to 1, then an invalid item value is placed into I_IDS
         if len(items[i]) == 0:
+            # recover the old values for stockTable and exit the benchmark with item number is not valid
             for stock, stockI in zip(stockTable, stockTableInitial):
                 stock['S_QUANTITY'] = stockI['S_QUANTITY']
                 stock['S_YTD'] = stockI['S_YTD']
@@ -375,7 +515,7 @@ def paymentTransaction(W_ID, D_W_ID, D_ID, C_W_ID, C_D_ID, C_ID, C_LAST, H_AMOUN
             district['D_YTD'] = district['D_YTD'] + H_AMOUNT
             district_info.append([D_NAME, D_STREET_1, D_STREET_2, D_CITY, D_STATE, D_ZIP, district['D_YTD']])
             break
-    if C_ID != None:
+    if C_ID is None:
         for customer in customerTable:
             if C_W_ID == customer['C_W_ID'] and C_D_ID == customer['C_D_ID'] and C_ID == customer['C_ID']:
                 C_FIRST = customer['C_FIRST']
@@ -393,11 +533,14 @@ def paymentTransaction(W_ID, D_W_ID, D_ID, C_W_ID, C_D_ID, C_ID, C_LAST, H_AMOUN
                 C_DISCOUNT = customer['C_DISCOUNT']
                 C_DATA = customer['C_DATA']
                 customer['C_BALANCE'] = customer['C_BALANCE'] - H_AMOUNT
+                C_BALANCE = customer['C_BALANCE']
                 customer['C_YTD_PAYMENT'] = customer['C_YTD_PAYMENT'] + H_AMOUNT
+                C_YTD_PAYMENT = customer['C_YTD_PAYMENT']
                 customer['C_PAYMENT_CNT'] = customer['C_PAYMENT_CNT'] + 1
+                C_PAYMENT_CNT = customer['C_PAYMENT_CNT']
                 customer_info.append([C_ID, C_FIRST, C_MIDDLE, C_LAST, C_STREET_1, C_STREET_2, C_CITY, C_STATE, C_ZIP,
-                                     C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_DATA, customer['C_BALANCE'],
-                                     customer['C_YTD_PAYMENT'], customer['C_PAYMENT_CNT']])
+                                     C_PHONE, C_SINCE, C_CREDIT, C_CREDIT_LIM, C_DISCOUNT, C_DATA, C_BALANCE,
+                                     C_YTD_PAYMENT, C_PAYMENT_CNT])
     else:
         customer_with_lastname = []
         for customer in customerTable:
@@ -569,7 +712,7 @@ numOfWarehouses = 1
 warehouseTable = createWarehouseTable(numOfWarehouses)
 districtTable = createDistrictTable(numOfWarehouses)
 customerTable = createCustomerTable(numOfWarehouses)
-historyTable = createHistoryTable()
+historyTable = createHistoryTable(numOfWarehouses)
 newOrderTable = createNewOrderTable()
 orderTable = createOrderTable()
 orderLineTable = createOrderLineTable()
