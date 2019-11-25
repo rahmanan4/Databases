@@ -2,22 +2,24 @@ Exploring a distributed database prototype
 
 
 Project Description:
-	Transitions from centralized to distributed databases have become a popular topic for research. This report seeks to implement a distributed database system that overcomes some issues that centralized systems face such as bottlenecking and scalability. Initial Python implemented prototype was created with serial and concurrent locking mechanisms. Throughput for varying number of interconnected nodes ranged from 2,290-11,681 operations/sec. Minimum latency values for n=4 interconnected nodes  with concurrent execution for 1,000 and 10,000 operations were 0.2643 and 2.6296 sec respectively. Further research will be performed in implementing the model on different programming language platforms.
+	Transitions from centralized to distributed databases have become a popular topic for research. This report seeks to implement a distributed database system that overcomes some issues that centralized systems face such as bottlenecking and scalability. The initial prototype implemented in Python was created with serial and concurrent locking mechanisms. Throughput for varying number of interconnected nodes ranged from 2,290-11,681 operations/sec and 206-292 tpmC. Minimum latency values for n=4 interconnected nodes  with concurrent execution for 1,000 and 10,000 operations were 0.2643 and 2.6296 sec respectively. Further research will be performed in implementing the model on different programming language platforms.
 
 
 
 Prerequisites:
 Python 3.6.1 (Install at: https://www.python.org/downloads/release/python-361/)
 
-Use pip install to retrieve the following libraries:
-	import socket 
+Use pip install to retrieve the following libraries and ensure the following imports are present:
+	import socket
 	import sys
 	import threading
 	import time
 	import random
-
-
-
+	import tpc_c
+	import json
+	import datetime
+	from datetime import date
+	
 Local Deployment (Mac):
 **For deployment on other OS, run server.py file through python console
 
@@ -110,5 +112,8 @@ Running Tests (Transaction Types):
 
 15.) wfr (Ex. Input: wfr)
 	- Will perform a large amount of write operations to fill up the database with values
+	
+16.) tpm (Ex. Input: tpm)
+	- Will execute as many TPC-C transaction profiles as possible within 60 seconds. Outputs tpmC business throughput values
 
 
